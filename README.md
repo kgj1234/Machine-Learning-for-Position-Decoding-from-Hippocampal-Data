@@ -19,3 +19,5 @@ Note that when selecting a folder to save the resulting models in, if the input 
 Currently, I do not have a program dedicated to extracting predictions from a trained model, though this is on the to do list. predictions can still be extracted after training the model, if this is specified in the TrainCVObtainParameters* code.
 
 Rudimentary testing has been done. Let me know of any issues.
+
+Required libraries not in the standard library: tensorflow 
