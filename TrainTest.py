@@ -18,7 +18,7 @@ def combined_layer(data,neurons,training):
 
 	return dropout_layer(hidden_layer(data,neurons,training),training)
 
-def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,iterations,n_neurons,n_layers=3,folder='./newmodel',save_model=True):
+def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,iterations,n_neurons,n_layers=3,folder=None,save_model=False):
 	tf.reset_default_graph()
 	
 	
@@ -31,7 +31,9 @@ def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,it
 	learning_rate=tf.placeholder(tf.float32,None)
 	
 	X=tf.placeholder(tf.float32,[None,X_train_batches[0].shape[0],X_train_batches[0].shape[1]])
+	print(X)
 	X_reshaped=tf.reshape(X,[-1,X_train_batches[0].shape[0]*X_train_batches[0].shape[1]])
+	print(X_reshaped)
 	print(X_reshaped.shape)
 	y=tf.placeholder(tf.float32,[None,n_outputs])
 	if n_layers==0:
@@ -79,35 +81,40 @@ def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,it
 	#Construct builder to save Model
 	
 	if save_model==True:
-		if os.path.isdir(folder):
-			
-			shutil.rmtree(folder)
-		builder=tf.saved_model.builder.SavedModelBuilder(folder)
-		tensor_info_X=tf.saved_model.utils.build_tensor_info(X)
-		tensor_info_y=tf.saved_model.utils.build_tensor_info(y)
-		tensor_info_pred=tf.saved_model.utils.build_tensor_info(prediction)
-		tensor_info_training=tf.saved_model.utils.build_tensor_info(training)
-		prediction_signature=(tf.saved_model.signature_def_utils.build_signature_def(
+			while True:
+				if os.path.isdir(folder):
+					del_dir=input('Delete Directory and Replace with New Models? y/n ')
+					if del_dir=='y':
+						shutil.rmtree(folder)
+						break
+					else:
+						folder=input('input a new folder name: ')
+				else:
+					break
+				
+			builder=tf.saved_model.builder.SavedModelBuilder(folder)
+			tensor_info_X=tf.saved_model.utils.build_tensor_info(X)
+			tensor_info_y=tf.saved_model.utils.build_tensor_info(y)
+			tensor_info_pred=tf.saved_model.utils.build_tensor_info(prediction)
+			tensor_info_training=tf.saved_model.utils.build_tensor_info(training)
+			prediction_signature=(tf.saved_model.signature_def_utils.build_signature_def(
 							inputs={"X":tensor_info_X,"y":tensor_info_y,"training":tensor_info_training},
 							outputs={"pred":tensor_info_pred},
 							method_name=tf.saved_model.signature_constants.PREDICT_METHOD_NAME))
-		
 	
 
 	shufflearray=list(range(len(X_train_batches)))
 	shuffle(shufflearray)
 	X_train_batches=X_train_batches[shufflearray]
 	y_train_batches=y_train_batches[shufflearray]
-	batch_size=min([len(X_train_batches),120])
+	batch_size=min([len(X_train_batches),3000])
 	
 	config = tf.ConfigProto()
 	config.gpu_options.allow_growth = True
 	sess=tf.Session(config=config)
 	with sess.as_default():
 		init.run()
-		if save_model==True:
-			builder.add_meta_graph_and_variables(sess,[tf.saved_model.tag_constants.SERVING],
-					signature_def_map={tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:prediction_signature})
+		
 		
 		
 		for iteration in range(n_iterations):
@@ -133,7 +140,7 @@ def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,it
 				r2_testx=R_squaredx.eval(feed_dict={X:X_batch,y:y_batch,training:False,learning_rate:rate})
 				r2_testy=R_squaredy.eval(feed_dict={X:X_batch,y:y_batch,training:False,learning_rate:rate})
 				r2_test=[r2_testx,r2_testy]
-				if iteration %200==0:
+				if iteration %20==0:
 					try:
 						print(iteration,np.sqrt(train_mse),np.sqrt(test_mse))
 					except:
@@ -141,11 +148,6 @@ def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,it
 				if np.mean(r2_test)>np.mean(max_r2):
 					max_r2=r2_test
 					count=0
-					if save_model==True:
-						if os.path.isdir(folder):
-			
-							shutil.rmtree(folder)
-						builder.save()
 					
 				if min_rmse>np.sqrt(test_mse):
 					min_rmse=np.sqrt(test_mse)
@@ -162,6 +164,12 @@ def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,it
 			print(max_r2,min_rmse,np.mean(max_r2))
 		except:
 			pass
+		if save_model==True:
+			builder.add_meta_graph_and_variables(sess,[tf.saved_model.tag_constants.SERVING],
+					signature_def_map={tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:prediction_signature})
+					
+			builder.save()
+					
 		pred=sess.run(prediction,feed_dict={X:X_test_batches,training:False})
 		
 	sess.close()
@@ -174,9 +182,11 @@ def train_model(X_train_batches,y_train_batches,X_test_batches,y_test_batches,it
 	
 
 def test_model(X_test_batches,y_test_batches,folder='./'):
+	print(3)
 	tf.reset_default_graph()
 	
-
+	config = tf.ConfigProto()
+	config.gpu_options.allow_growth = True
 	
 	
 	
@@ -213,12 +223,11 @@ def test_model(X_test_batches,y_test_batches,folder='./'):
 		
 		
 			
-	test_mse=loss.eval(feed_dict={X:X_test_batches,y:y_test_batches,training:False})
-	r2_test=R_squared.eval(feed_dict={X:X__test_batches,y:y_test_batches,training:False})
+	test_mse=loss.eval(feed_dict={X:X_test_batches,y:y_test_batches,training:False},session=sess)
+	r2_test=R_squared.eval(feed_dict={X:X_test_batches,y:y_test_batches,training:False},session=sess)
 	pred=sess.run(prediction,feed_dict={X:X_test_batches,training:False})	
-		
-		
-	return pred,y_test_batches	
+	
+	return r2_test,np.sqrt(test_mse),pred,y_test_batches
 		
 
 

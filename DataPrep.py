@@ -2,9 +2,16 @@ import firingrateapproximations as fra
 import TrainTest
 import numpy as np
 import Normalize
-def prepDataTrain(Neuron,xpos,ypos,scale,offset=4,length=10):
-	
-		
+import velocityfiltering
+def prepDataTrain(Neuron,xpos,ypos,scale,filtering=0,neurons=None,offset=4):
+	if neurons is not None:
+		neurons=np.loadtxt(root.fileName,delimiter=',')	
+		Neuron=Neuron[:,neurons]
+	if filtering>0:
+		filtered=velocityfiltering.velocity_filter(xpos,ypos,filtering)
+		Neuron=Neuron[filtered,:]
+		xpos=xpos[filtered]
+		ypos=ypos[filtered]	
 	xpos=xpos*scale
 	ypos=ypos*scale
 	
@@ -16,6 +23,7 @@ def prepDataTrain(Neuron,xpos,ypos,scale,offset=4,length=10):
 	pos=pos[:-offset-1,:]
 
 	return Neuron,pos
+
 
 def batches(X,y,length,Left_Only=False):
 	X_batches=[]
@@ -148,10 +156,24 @@ def Separate_Normalize_Batch_CV_Train_Set(Neuron,position,train_indices,num_fold
 	train_Neuron,train_position=batches(train_Neuron,train_position,length,Left_Only)
 	test_Neuron,test_position=batches(test_Neuron,test_position,length,Left_Only)
 	return train_Neuron,train_position,test_Neuron,test_position
-		
-		
-def Separate_Normalize_Batch_Test_Train_Set(Neuron,position,train_indices,test_indices,length,Left_Only=False,method=None,param_values=None,normalize=False):		
-	avg,std=Normalize.CalcAvgStd(Neuron[train_indices,:])
+def cutoff_ends(cutoff,train_Neuron,train_position,test_Neuron,test_position,tracklength=None):
+	if cutoff>0:
+		if tracklength is None:
+			tracklength=100
+			include_train=[i for i in range(len(train_position)) if train_position[i][0]>cutoff*100 and train_position[i][0]<(100-cutoff*100)]
+			train_Neuron=train_Neuron[include_train]
+			train_position=train_position[include_train]
+			include_test=[i for i in range(len(test_position)) if test_position[i][0]>cutoff*100 and test_position[i][0]<(100-cutoff*100)]
+			test_Neuron=test_Neuron[include_test]
+			test_position=test_position[include_test]
+			if len(position_test)<(test_size-.03)*len(position_train):
+				cont_training=('removing data caused test size to reduce to '+str(len(position_test)/(len(position_test)+len(position_train)))+' of the total. Continue training? y/n ')
+				if cont_training=='n':
+					raise Exception('Insufficient test set')
+	return train_Neuron,train_position,test_Neuron,test_position
+def Separate_Normalize_Batch_Test_Train_Set(Neuron,position,train_indices,test_indices,length,Left_Only=False,method=None,param_values=None,normalize=False,avg=None,std=None,pos_avg=None):	
+	if avg is None:
+		avg,std=Normalize.CalcAvgStd(Neuron[train_indices,:])
 	train_Neuron=Normalize.Normalize(Neuron[train_indices,:],avg,std)
 	#avg_pos=np.mean(position[train_indices,:],0)
 	#train_position=Normalize.Demean(position[train_indices,:],avg_pos)
@@ -162,7 +184,8 @@ def Separate_Normalize_Batch_Test_Train_Set(Neuron,position,train_indices,test_i
 	test_Neuron=Normalize.Normalize(Neuron[test_indices,:],avg,std)
 	
 	if normalize==True:
-		avg_pos=avg_pos=np.mean(position[train_indices,:],0)
+		if avg_pos is None:
+			avg_pos=avg_pos=np.mean(position[train_indices,:],0)
 		train_position=Normalize.Demean(position[train_indices,:],avg_pos)
 		test_position=Normalize.Demean(position[test_indices,:],avg_pos)
 	else:
