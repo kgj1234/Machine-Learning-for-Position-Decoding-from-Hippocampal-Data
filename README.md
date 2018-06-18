@@ -1,7 +1,7 @@
 # Machine-Learning-for-Position-Decoding-from-Hippocampal-Data
 This repository contains code designed to predict position of an animal from its hippocampal data. This can be used in experiments, to help describe the effect of stimuli on an animal, or it can be used just to verify the quality of the neural activity.
 
-Currently, linear track and rectangular enclosures are supported. I see no reason why the code would fail for other shaped enclosures, so long as the parameter offset is set to 0.
+Currently, linear track and rectangular enclosures are supported. I see no reason why the code would fail for other shaped enclosures, so long as the parameter cutoff is set to 0.
 
 Neural activity can be formated either as spike trains, in which case the data should be binned, or as processed data (such as the output of CNMF-E). Data should be in a comma delimited text file, and should be of shape n_neurons by n_samples. The code will allow you to select the file, or input the filepath manually. For spike trains, multiple options for processing are allowable, such as the use of gaussian filters, or moving window functions.
 
