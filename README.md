@@ -8,15 +8,13 @@ Neural activity can be formated either as spike trains, in which case the data s
 Position data should be a text file of form n_samples by 2. 
 
 
-Data and Parameters are inputted using either TrainCVObtainParameters.py or TrainCVObtainParametersManual.py. The first will take you through all of the possible options in an interactive format. The second allows manual input of the parameters, with full descriptions of what each parameter does. In the future, I will create a simplified version of TrainCVObtainParameters.py, which will only ask for the essential parameters.
-
+Data and Parameters are inputted using either TrainCVObtainParameters.py or TrainCVObtainParametersManual.py. The first will take you through all of the possible options in an interactive format. The second allows manual input of the parameters, with full descriptions of what each parameter does. There currently is no script exclusively for training. This is not difficult to do, just use the TrainModelWrapper code, and input your desired parameters. 
 
 Results and model parameters are saved in a pickle file at the end of training, with filepath specified by the user.
 
-Note that when selecting a folder to save the resulting models in, if the input matches a folder in the current directory, that folder will be replaced.
+Note that when selecting a folder to save the resulting models in, if the input matches a folder in the current directory, that folder will be replaced. The code will warn you of this, and will require and input to overwrite the code.
 
 
-Currently, I do not have a program dedicated to extracting predictions from a trained model, though this is on the to do list. predictions can still be extracted after training the model, if this is specified in the TrainCVObtainParameters* code.
 
 Rudimentary testing has been done. Let me know of any issues.
 
