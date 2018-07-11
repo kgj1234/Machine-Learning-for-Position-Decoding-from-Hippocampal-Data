@@ -17,7 +17,7 @@ def RunCrossValidation(neuralactivity,xpos,ypos,scale=1,length=[5],offsets=[4],n
 		for j in offsets:
 			#Offset neural activity, scale, apply neuron subset
 			
-			Neuron,position=DataPrep.prepDataTrain(neuralactivity,xpos,ypos,scale,filtering,neurons,j)
+			Neuron,position=DataPrep.prepDataTrain(neuralactivity,xpos,ypos,scale,neurons,j)
 			if sep_test==True:
 		
 				test_indices=np.arange(0,int(test_size*Neuron.shape[0]))
@@ -28,26 +28,30 @@ def RunCrossValidation(neuralactivity,xpos,ypos,scale=1,length=[5],offsets=[4],n
 				for m in num_layers:
 					if param_values is not None:
 						for l in param_values:
-							print(str(current_iteration)+ 'of'+str(len(length)*len(offsets)*len(num_neurons)*len(param_values)*len(num_layers)))
+							print('cross validation',str(current_iteration)+ ' of '+str(len(length)*len(offsets)*len(num_neurons)*len(param_values)*len(num_layers)))
 							#key results will be saved under in pickle file
 							key='length_'+str(i)+'offset_'+str(j)+'num_neurons_'+str(k)+'num_layers'+str(m)+'param value'+str(l)
 							current_result=[]
-							
+							print('length', i)
+							print('offset', j)
+							print('num_neurons', k)
+							print('num_layers', m)
+							print('parameter value', l)
 							
 	
 							
 							for q in range(num_folds):
-								
+								print('fold'+ str(q+1)+' of '+str(num_folds))
 						
 								
 								train_Neuron,train_position,test_Neuron,test_position=DataPrep.Separate_Normalize_Batch_CV_Train_Set(Neuron,position,train_indices,num_folds,q,i,Left_Only=Left,
-																																	method=method,param_values=l,normalize=False)
+																																	method=method,param_values=l,normalize=False,filtering=filtering)
 							
 								train_Neuron,train_position,test_Neuron,test_position=DataPrep.cutoff_ends(cutoff,train_Neuron,train_position,test_Neuron,test_position,tracklength=tracklength)	
 								train_Neuron,train_position,test_Neuron,test_position=np.asarray(train_Neuron),np.asarray(train_position),np.asarray(test_Neuron),np.asarray(test_position)
 								#Train Models
 								if model_type=='NN':
-									#print(train_Neuron.shape,test_Neuron.shape,train_position.shape)
+							
 									r2,rmse,predicted,actual=TrainTest.train_model(train_Neuron,train_position,test_Neuron,
 																			test_position,iterations,n_neurons=k,n_layers=m)
 								if model_type=='CNN':
@@ -61,8 +65,8 @@ def RunCrossValidation(neuralactivity,xpos,ypos,scale=1,length=[5],offsets=[4],n
 			
 					else:
 							
-						print(str(current_iteration)+ 'of'+str(len(length)*len(offsets)*len(num_neurons)*len(num_layers)))
-						key='length_'+str(length[i])+'offset_'+str(offsets[j])+'num_neurons_'+str(num_neurons[k])+'num_layers'+str(num_layers[m])
+						print(str(current_iteration)+ ' of '+str(len(length)*len(offsets)*len(num_neurons)*len(num_layers)))
+						key='length_'+str(i)+'offset_'+str(j)+'num_neurons_'+str(k)+'num_layers'+str(m)
 						
 						current_result=[]
 						for q in range(num_folds):
@@ -70,8 +74,8 @@ def RunCrossValidation(neuralactivity,xpos,ypos,scale=1,length=[5],offsets=[4],n
 						
 							
 							train_Neuron,train_position,test_Neuron,test_position=DataPrep.Separate_Normalize_Batch_CV_Train_Set(Neuron,position,train_indices,num_folds,q,i,Left_Only=Left,
-																																	method=None,param_values=None,normalize=False)
-							train_Neuron,train_position,test_Neuron,test_position=DataPrep.cutoff_ends(train_Neuron,train_position,test_Neuron,test_position,position_test,tracklength=tracklength)				
+																																	method=None,param_values=None,normalize=False,filtering=filtering)
+							train_Neuron,train_position,test_Neuron,test_position=DataPrep.cutoff_ends(cutoff,train_Neuron,train_position,test_Neuron,test_position,tracklength=tracklength)				
 							#Train Models
 							if model_type=='NN':
 								r2,rmse,predicted,actual=TrainTest.train_model(np.asarray(train_Neuron),np.asarray(train_position),np.asarray(test_Neuron),np.asarray(test_position),iterations,n_neurons=k,n_layers=m)

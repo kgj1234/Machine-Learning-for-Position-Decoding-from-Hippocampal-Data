@@ -14,7 +14,12 @@ def CalcAvgStd(data):
 
 def Normalize(data,avg,std):
 	for i in range(0,data.shape[1]):
-		data[:,i]=(data[:,i]-avg[i])/std[i]
+		if abs(std[i])>10**(-10):
+			data[:,i]=(data[:,i]-avg[i])/std[i]
+			
+			#data[:,i]=data[:,i]-avg[i]
+		else:
+			data[:,i]=data[:,i]-avg[i]
 	return data
 def Demean(data,avg):
 	

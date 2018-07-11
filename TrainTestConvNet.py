@@ -8,6 +8,9 @@ import pickle
 from sklearn.externals import joblib
 from random import shuffle
 import TrainTest
+import shutil
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 def conv_layer(data,fmaps,ksize,stride,pad,batch_normalize=True):
 	if batch_normalize==False:
 		return tf.layers.conv2d(data,fmaps,ksize,strides=stride,padding=pad,activation=tf.nn.relu,kernel_initializer=tf.contrib.layers.xavier_initializer(),kernel_regularizer=tf.contrib.layers.l2_regularizer(.05))
@@ -26,6 +29,13 @@ def dropout_layer(data,training):
 	return tf.layers.dropout(data,.5,training=training)
 def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,iterations,n_neurons,folder='./newmodel',n_layers=0,save_model=False):
 	tf.reset_default_graph()
+	
+	
+	
+	print('number of training samples: ',X_train_batches.shape[0])
+	print('number of testing samples: ',X_test_batches.shape[0])
+	print('number of features: (',X_train_batches.shape[1],',',X_train_batches.shape[2],')')
+	
 	
 
 	training=tf.placeholder(tf.bool,None,name='Training')
@@ -94,10 +104,9 @@ def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,
 	Saver=tf.train.Saver()
 	n_iterations=iterations
 	i=0
-	min_rmse=500*500
-	max_r2=-10
-	count=0
-	rate=.1
+
+
+	rate=.01
 	
 	loss=tf.reduce_mean(tf.square(prediction-y))
 	update_ops=tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -113,11 +122,8 @@ def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,
 	Saver=tf.train.Saver()
 	n_iterations=iterations
 	
-	i=0
-	min_rmse=500*500
-	max_r2=-10
-	count=0
-	rate=.1
+	
+	
 	
 	#Construct builder to save Model
 	if save_model==True:
@@ -154,6 +160,12 @@ def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,
 	config.gpu_options.allow_growth = True
 	sess=tf.Session(config=config)
 	
+	
+	max_r2=-10
+	count=0
+	
+	
+	
 	with sess.as_default():
 		init.run()
 		
@@ -180,41 +192,38 @@ def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,
 				X_batch,y_batch=X_test_batches,y_test_batches
 				test_mse=[]
 				r2_test=[]
+				#Note this will not calculate mse or r2 on test samples with some indices
 				for i in range(int(len(y_test_batches)/batch_size)):
 					test_mse.append(loss.eval(feed_dict={X:X_test_batches[i*batch_size:(i+1)*batch_size],y:y_test_batches[i*batch_size:(i+1)*batch_size],training:False}))
 					r2_test.append(R_squared.eval(feed_dict={X:X_test_batches[i*batch_size:(i+1)*batch_size],y:y_test_batches[i*batch_size:(i+1)*batch_size],training:False}))
 				test_mse=np.mean(test_mse)
 				r2_test=np.mean(r2_test)
-				print(np.sqrt(test_mse),r2_test)
+				
 				if iteration%200==0:
 					try:
-						print(iteration,np.sqrt(train_mse),np.sqrt(test_mse))
+						print('iteration',iteration,'Train RMSE',np.sqrt(train_mse),'Test RMSE',np.sqrt(test_mse),'Test R2', np.mean(r2_test))
 					except:
 						pass
 				if r2_test>max_r2:
 					max_r2=r2_test
 					count=0
-					
-				if min_rmse>np.sqrt(test_mse):
-					min_rmse=np.sqrt(test_mse)
-					
-					count=0
 				else:
 					count+=1
-				if count>10:
+				if count>=10:
+					count=0
 					rate=rate/2
 					
-					
-					
-		try:		
-			print(max_r2,min_rmse)
-		except:
-			pass
 		if save_model==True:
 			builder.add_meta_graph_and_variables(sess,[tf.saved_model.tag_constants.SERVING],
-					signature_def_map={tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:prediction_signature})
-			builder.save()
-		print(2)
+							signature_def_map={tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:prediction_signature})
+			builder.save()	
+					
+		try:		
+			print('final r2',r2_test,'final rmse', np.sqrt(test_mse))
+		except:
+			pass
+		
+	
 		pred=[]
 		for i in range(int(X_test_batches.shape[0]/batch_size)+1):
 			current_pred=sess.run(prediction,feed_dict={X:X_test_batches[batch_size*i:batch_size*(i+1)],training:False})
@@ -223,7 +232,7 @@ def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,
 		
 		
 	sess.close()
-	return max_r2,min_rmse,pred,np.array(y_test_batches)
+	return r2_test,np.sqrt(test_mse),pred,np.array(y_test_batches)
 
 
 
@@ -231,10 +240,11 @@ def train_convnet(X_train_batches,y_train_batches,X_test_batches,y_test_batches,
 
 	
 
-def test_convnet(X_test_batches,y_test_batches,folder='./'):
+def test_convnet(X_test_batches,y_test_batches,folder='./',return_grad=False):
 	tf.reset_default_graph()
-	
-
+	tf.logging.set_verbosity(tf.logging.ERROR)
+	print('number of testing samples: ',X_test_batches.shape[0])
+	print('number of features: (',X_test_batches.shape[1],',',X_test_batches.shape[2],')')
 	
 	
 	
@@ -285,11 +295,40 @@ def test_convnet(X_test_batches,y_test_batches,folder='./'):
 	for i in range(int(X_test_batches.shape[0]/batch_size)+1):
 		current_pred=sess.run(prediction,feed_dict={X:X_test_batches[batch_size*i:batch_size*(i+1)],training:False})
 		pred.append(current_pred)
+
 	pred=np.vstack(pred)
-	print(pred.shape)
+	
+	if return_grad==True:
+		
+		x_grad=tf.gradients(prediction[:,0],X)
+	
+		y_grad=tf.gradients(prediction[:,1],X)
+		x_gradients=[]
+		y_gradients=[]
 		
 		
-	return r2_test,np.sqrt(test_mse),pred,y_test_batches
+		for j in range(int(X_test_batches.shape[0]/batch_size)+1):
+		
+			x_grad_eval=sess.run(x_grad,feed_dict={X:X_test_batches[batch_size*j:batch_size*(j+1),:,:],training:False})
+	
+			x_gradients.append(x_grad_eval[0])
+			y_grad_eval=sess.run(y_grad,feed_dict={X:X_test_batches[batch_size*j:batch_size*(j+1),:,:],training:False})
+			y_gradients.append(y_grad_eval[0])
+		x_gradients=np.concatenate(x_gradients)
+		y_gradients=np.concatenate(y_gradients)
+		#average over magnitude
+		x_gradients=np.sqrt(np.sum(np.square(x_gradients),0)/x_gradients.shape[0])
+		y_gradients=np.sqrt(np.sum(np.square(y_gradients),0)/y_gradients.shape[0])
+	
+		gradients=np.concatenate((x_gradients.reshape((1,x_gradients.shape[0],x_gradients.shape[1])),y_gradients.reshape((1,y_gradients.shape[0],y_gradients.shape[1]))))
+	
+			
+        
+	else:
+		gradients=None
+        
+		
+	return r2_test,np.sqrt(test_mse),pred,y_test_batches,gradients
 		
 
 

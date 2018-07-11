@@ -5,47 +5,50 @@ import numpy as np
 from matplotlib import pyplot as plt
 def gaussianConvolution(neural_activity,standard_dev):
 	#print(neural_activity.shape[1])
-	for  i in range(0,neural_activity.shape[1]):
-		neural_activity[:,i]=gaussian_filter(neural_activity[:,i],sigma=standard_dev)
-	return neural_activity
+	neural_activity1=np.copy(neural_activity)
+	for  i in range(0,neural_activity1.shape[1]):
+		neural_activity1[:,i]=gaussian_filter(neural_activity[:,i],sigma=standard_dev)
+	return neural_activity1
 
 
 def windowMethod(neural_activity,window_length):
-	padding=np.zeros((window_length,neural_activity.shape[1]))
-	neural_activity=np.vstack((padding,neural_activity,padding))
+	neural_activity1=np.copy(neural_activity)
+	padding=np.zeros((window_length,neural_activity1.shape[1]))
+	neural_activity1=np.vstack((padding,neural_activity1,padding))
 
-	for i in range(neural_activity.shape[1]):
-		total=np.zeros((neural_activity.shape[0]-2*window_length))
+	for i in range(neural_activity1.shape[1]):
+		total=np.zeros((neural_activity1.shape[0]-2*window_length))
 		for j in range(-window_length,window_length+1):
 		
 		
-			total=total+neural_activity[window_length-j:neural_activity.shape[0]-window_length-j,i]
+			total=total+neural_activity1[window_length-j:neural_activity1.shape[0]-window_length-j,i]
 		
-		neural_activity[window_length:-window_length,i]=total
-	neural_activity=neural_activity*1/(2*window_length)
-	return neural_activity[window_length+1:-window_length-1,:]
+		neural_activity1[window_length:-window_length,i]=total
+	neural_activity1=neural_activity1*1/(2*window_length)
+	return neural_activity1[window_length+1:-window_length-1,:]
 	
 def alpha_function(neural_activity,alpha,window_length=100):
-	padding=np.zeros((window_length,neural_activity.shape[1]))
-	neural_activity=np.vstack((padding,neural_activity,padding))
+	neural_activity1=np.copy(neural_activity)
+	padding=np.zeros((window_length,neural_activity1.shape[1]))
+	neural_activity1=np.vstack((padding,neural_activity1,padding))
 
-	for i in range(neural_activity.shape[1]):
-		total=np.zeros((neural_activity.shape[0]-2*window_length))
+	for i in range(neural_activity1.shape[1]):
+		total=np.zeros((neural_activity1.shape[0]-2*window_length))
 		for j in range(0,window_length):
 		
 		
-			total=total+(alpha**(2))*abs(j)*np.exp(-alpha*abs(j))*neural_activity[window_length-j:neural_activity.shape[0]-window_length-j,i]
+			total=total+(alpha**(2))*abs(j)*np.exp(-alpha*abs(j))*neural_activity1[window_length-j:neural_activity1.shape[0]-window_length-j,i]
 		
-		neural_activity[window_length:-window_length,i]=total
+		neural_activity1[window_length:-window_length,i]=total
 	#neural_activity[window_length:2*window_length]*=2
 	
 	#neural_activity[-window_length:]*=2
-	neural_activity=neural_activity
-	return neural_activity[window_length:-window_length,:]
+	
+	return neural_activity1[window_length:-window_length,:]
 def approximateTraceFromSpiking(firing_data,alpha):
 	y=np.zeros((len(firing_data)))
 	x=np.linspace(0,len(firing_data),len(firing_data))
-	expo=np.exp(-alpha*x)
+	expo=alpha*np.exp(-alpha*x)
 
 	length=len(firing_data)
 	for i in range(len(firing_data)):
@@ -54,11 +57,12 @@ def approximateTraceFromSpiking(firing_data,alpha):
 			y[i:i+min([100,length-i])]=y[i:i+min([100,length-i])]+firing_data[i]*expo[0:min([100,length-i])]
 			
 	return y	
-def ApproxTrace(firing_matrix,alpha=.056):
-	y=np.zeros((firing_matrix.shape))
-	for i in range(len(firing_matrix[0,:])):
+def ApproxTrace(neural_activity,alpha=.056):
+	neural_activity1=np.copy(neural_activity)
+	y=np.zeros((neural_activity1.shape))
+	for i in range(len(neural_activity1[0,:])):
 
-		y[:,i]=approximateTraceFromSpiking(firing_matrix[:,i],alpha=alpha)
+		y[:,i]=approximateTraceFromSpiking(neural_activity1[:,i],alpha=alpha)
 
 	return y	
 
@@ -66,7 +70,7 @@ def ApproxTrace(firing_matrix,alpha=.056):
 
 #Testing
 """
-np.random.seed(seed=42)
+np.random.seed(seed=42)11
 x=np.linspace(0,1000,1000)
 y=random(1000,1,density=.1)
 print(y)
